@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ファミ旅リンク | グループ旅行管理</title>
+    <!-- PWA / モバイルアプリ化メタタグ -->
+    <meta name="theme-color" content="#0d9488">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ファミ旅リンク">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" id="pwa-manifest">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Noto Sans JP & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Noto Sans JP"', '"Inter"', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            teal: '#0d9488',      // teal-600
+                            tealLight: '#ccfbf1', // teal-100
+                            tealDark: '#115e59',  // teal-800
+                            orange: '#f97316',    // orange-500
+                            orangeLight: '#ffedd5', // orange-100
+                            cream: '#fafaf9',     // stone-50
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* カスタムスクロールバーと微調整 */
+        body {
+            background-color: #f3f4f6;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.25s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased selection:bg-teal-200 selection:text-teal-900">
+
+    <!-- メインアプリコンテナ（最大幅560pxのモバイルファーストカードUI） -->
+    <div id="app" class="max-w-[560px] mx-auto min-h-screen bg-[#fafaf9] shadow-xl flex flex-col relative pb-24">
+        
+        <!-- ヘッダー -->
+        <header class="bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-5 pt-5 pb-6 rounded-b-3xl shadow-md sticky top-0 z-20">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <span class="bg-white/20 p-1.5 rounded-xl text-xl backdrop-blur-sm">🏕️</span>
+                    <span class="text-xs font-bold tracking-wider uppercase bg-orange-500 text-white px-2.5 py-0.5 rounded-full shadow-sm">ファミ旅リンク</span>
+                </div>
+                <button onclick="openResetModal()" class="text-xs bg-white/15 hover:bg-white/25 active:scale-95 transition px-3 py-1.5 rounded-full flex items-center gap-1 font-medium">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    データ消去
+                </button>
+            </div>
+            
+            <h1 id="header-trip-title" class="text-xl sm:text-2xl font-bold leading-snug tracking-tight">新しいグループ旅行</h1>
+            
+            <div class="flex flex-wrap items-center justify-between gap-2 mt-2.5 text-teal-50 text-xs sm:text-sm">
+                <div class="flex items-center gap-1.5 bg-black/15 px-3 py-1 rounded-full">
+                    <span>📅</span>
+                    <span id="header-trip-dates">日程未設定</span>
+                </div>
+                <div class="flex items-center gap-1.5 bg-black/15 px-3 py-1 rounded-full">
+                    <span>👨‍👩‍👧‍👦</span>
+                    <span id="header-member-summary">0家族 (計0名)</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- トースト通知（alert代替） -->
+        <div id="toast" class="fixed top-24 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 transition-all duration-300 transform -translate-y-2">
+            <div class="bg-slate-800/95 text-white text-sm font-medium px-4 py-2.5 rounded-full shadow-lg flex items-center gap-2 backdrop-blur-sm">
+                <span id="toast-icon">✅</span>
+                <span id="toast-msg">保存しました</span>
+            </div>
+        </div>
+
+        <!-- メインコンテンツエリア -->
+        <main id="main-content" class="flex-1 px-4 pt-5 space-y-6">
+            <!-- JSによって各タブのビューが描画されます -->
+        </main>
+
+        <!-- ボトムナビゲーションバー（固定） -->
+        <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[560px] bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 py-2 z-30 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
+            <div class="grid grid-cols-4 gap-1">
+                <button onclick="switchTab('timeline')" id="nav-timeline" class="nav-btn flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all">
+                    <span class="text-xl mb-0.5">🗓️</span>
+                    <span class="text-[11px] font-bold">タイムライン</span>
+                </button>
+                <button onclick="switchTab('wishlist')" id="nav-wishlist" class="nav-btn flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all">
+                    <span class="text-xl mb-0.5">💡</span>
+                    <span class="text-[11px] font-bold">希望・投票</span>
+                </button>
+                <button onclick="switchTab('settlement')" id="nav-settlement" class="nav-btn flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all">
+                    <span class="text-xl mb-0.5">💰</span>
+                    <span class="text-[11px] font-bold">精算・持ち物</span>
+                </button>
+                <button onclick="switchTab('members')" id="nav-members" class="nav-btn flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all">
+                    <span class="text-xl mb-0.5">👨‍👩‍👧‍👦</span>
+                    <span class="text-[11px] font-bold">家族・設定</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- カスタム確認モーダル（confirm代替） -->
+        <div id="confirm-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+            <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl animate-fade-in">
+                <div class="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center text-2xl mb-4 mx-auto">
+                    ⚠️
+                </div>
+                <h3 id="modal-title" class="text-lg font-bold text-center text-slate-800 mb-2">確認</h3>
+                <p id="modal-desc" class="text-sm text-slate-600 text-center mb-6 leading-relaxed">実行してもよろしいですか？</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="closeConfirmModal()" class="py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition">
+                        キャンセル
+                    </button>
+                    <button id="modal-confirm-btn" class="py-3 px-4 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm shadow-md shadow-orange-500/20 transition">
+                        実行する
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ==========================================
+        // 0. PWA Manifest 動的生成（単一ファイル対応）
+        // ==========================================
+        (function setupPWA() {
+            const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#0d9488"/><text x="50%" y="54%" font-size="260" text-anchor="middle" dominant-baseline="middle">🏕️</text></svg>`;
+            const iconUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgIcon);
+            
+            const appleIcon = document.createElement('link');
+            appleIcon.rel = 'apple-touch-icon';
+            appleIcon.href = iconUrl;
+            document.head.appendChild(appleIcon);
+
+            const manifest = {
+                name: 'ファミ旅リンク - グループ旅行管理',
+                short_name: 'ファミ旅リンク',
+                description: '複数家族での旅行しおり・投票・割り勘精算アプリ',
+                start_url: '.',
+                display: 'standalone',
+                background_color: '#fafaf9',
+                theme_color: '#0d9488',
+                icons: [
+                    { src: iconUrl, sizes: '192x192', type: 'image/svg+xml' },
+                    { src: iconUrl, sizes: '512x512', type: 'image/svg+xml' }
+                ]
+            };
+            const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+            const manifestEl = document.getElementById('pwa-manifest');
+            if (manifestEl) {
+                manifestEl.href = URL.createObjectURL(blob);
+            }
+        })();
+
+        // ==========================================
+        // 1. データモデルと初期空データ（すべて0件・未設定）
+        // ==========================================
+        const STORAGE_KEY = 'famitabi_link_data_v2';
+
+        const FAMILY_COLORS = [
+            { id: 'teal', name: 'ティール', bg: 'bg-teal-100', text: 'text-teal-800', border: 'border-teal-300', dot: 'bg-teal-500' },
+            { id: 'orange', name: 'サンセット', bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-300', dot: 'bg-orange-500' },
+            { id: 'sky', name: 'スカイブルー', bg: 'bg-sky-100', text: 'text-sky-800', border: 'border-sky-300', dot: 'bg-sky-500' },
+            { id: 'rose', name: 'コーラル', bg: 'bg-rose-100', text: 'text-rose-800', border: 'border-rose-300', dot: 'bg-rose-500' },
+            { id: 'amber', name: 'ひまわり', bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-300', dot: 'bg-amber-500' },
+            { id: 'purple', name: 'ラベンダー', bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-300', dot: 'bg-purple-500' }
+        ];
+
+        const SCHEDULE_TYPES = {
+            all: { label: '全員一緒', icon: '🤝', bg: 'bg-teal-100', text: 'text-teal-800', border: 'border-teal-300' },
+            free: { label: '自由・別行動', icon: '🎈', bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-300' },
+            meal: { label: '食事', icon: '🍽️', bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-300' },
+            move: { label: '移動', icon: '🚗', bg: 'bg-sky-100', text: 'text-sky-800', border: 'border-sky-300' }
+        };
+
+        const EMPTY_DATA = {
+            trip: {
+                title: '',
+                startDate: '',
+                endDate: '',
+                daysCount: 2
+            },
+            families: [],
+            schedules: [],
+            wishes: [],
+            expenses: [],
+            items: []
+        };
+
+        // アプリ状態
+        let appData = null;
+        let currentTab = 'timeline';
+        let selectedDay = 1;
+        let wishSortBy = 'votes'; // 'votes' or 'newest'
+        let editingFamilyId = null;
+
+        // ==========================================
+        // 2. データ永続化 & ユーティリティ
+        // ==========================================
+        function loadData() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    appData = JSON.parse(raw);
+                } else {
+                    appData = JSON.parse(JSON.stringify(EMPTY_DATA));
+                    saveData(false);
+                }
+            } catch (e) {
+                console.error('Failed to load data:', e);
+                appData = JSON.parse(JSON.stringify(EMPTY_DATA));
+            }
+        }
+
+        function saveData(showNotification = true) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+                updateHeader();
+                if (showNotification) {
+                    showToast('変更を自動保存しました', '✨');
+                }
+            } catch (e) {
+                console.error('Failed to save data:', e);
+                showToast('保存に失敗しました', '⚠️');
+            }
+        }
+
+        function generateId(prefix) {
+            return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
+        }
+
+        function getFamily(id) {
+            return appData.families.find(f => f.id === id) || { id: 'unknown', name: '未定', adults: 0, children: 0, color: 'teal' };
+        }
+
+        function getColorObj(colorId) {
+            return FAMILY_COLORS.find(c => c.id === colorId) || FAMILY_COLORS[0];
+        }
+
+        function formatCurrency(num) {
+            return Math.round(num).toLocaleString('ja-JP') + '円';
+        }
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // トースト通知
+        let toastTimeout;
+        function showToast(msg, icon = '✅') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            document.getElementById('toast-icon').textContent = icon;
+            
+            toast.classList.remove('opacity-0', '-translate-y-2');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', '-translate-y-2');
+            }, 2200);
+        }
+
+        // カスタムモーダル制御
+        let modalCallback = null;
+        function openConfirmModal(title, desc, btnText, callback) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-desc').textContent = desc;
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            confirmBtn.textContent = btnText;
+            modalCallback = callback;
+            
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            modalCallback = null;
+        }
+
+        document.getElementById('modal-confirm-btn').addEventListener('click', () => {
+            if (modalCallback) modalCallback();
+            closeConfirmModal();
+        });
+
+        function openResetModal() {
+            openConfirmModal(
+                'すべてのデータを消去',
+                '現在入力されている旅行タイトル・家族・予定・精算データをすべて消去し、空の状態に戻します。よろしいですか？',
+                'すべて消去する',
+                () => {
+                    appData = JSON.parse(JSON.stringify(EMPTY_DATA));
+                    selectedDay = 1;
+                    editingFamilyId = null;
+                    saveData(false);
+                    renderCurrentTab();
+                    showToast('データをすべて消去しました', '🗑️');
+                }
+            );
+        }
+
+        // ==========================================
+        // 3. ヘッダー & ナビゲーション制御
+        // ==========================================
+        function updateHeader() {
+            document.getElementById('header-trip-title').textContent = appData.trip.title || '新しいグループ旅行（タイトル未設定）';
+            
+            let dateText = '日程未設定';
+            if (appData.trip.startDate) {
+                const start = appData.trip.startDate.replace(/-/g, '/');
+                const end = appData.trip.endDate ? appData.trip.endDate.replace(/-/g, '/') : '';
+                dateText = end && end !== start ? `${start} 〜 ${end}` : start;
+            }
+            document.getElementById('header-trip-dates').textContent = dateText;
+
+            const famCount = appData.families.length;
+            const totalAdults = appData.families.reduce((sum, f) => sum + (Number(f.adults) || 0), 0);
+            const totalChildren = appData.families.reduce((sum, f) => sum + (Number(f.children) || 0), 0);
+            const totalPeople = totalAdults + totalChildren;
+            
+            document.getElementById('header-member-summary').textContent = 
+                famCount === 0 ? '家族未登録（0名）' : `${famCount}家族 (計${totalPeople}名：大人${totalAdults}・子${totalChildren})`;
+        }
+            );
+        }
+
+        // ==========================================
+        // 3. ヘッダー & ナビゲーション制御
+        // ==========================================
+        function updateHeader() {
+            document.getElementById('header-trip-title').textContent = appData.trip.title || 'グループ旅行しおり';
+            
+            let dateText = '日程未設定';
+            if (appData.trip.startDate) {
+                const start = appData.trip.startDate.replace(/-/g, '/');
+                const end = appData.trip.endDate ? appData.trip.endDate.replace(/-/g, '/') : '';
+                dateText = end && end !== start ? `${start} 〜 ${end}` : start;
+            }
+            document.getElementById('header-trip-dates').textContent = dateText;
+
+            const famCount = appData.families.length;
+            const totalAdults = appData.families.reduce((sum, f) => sum + (Number(f.adults) || 0), 0);
+            const totalChildren = appData.families.reduce((sum, f) => sum + (Number(f.children) || 0), 0);
+            const totalPeople = totalAdults + totalChildren;
+            
+            document.getElementById('header-member-summary').textContent = 
+                `${famCount}家族 (計${totalPeople}名：大人${totalAdults}・子${totalChildren})`;
+        }
+
+        function switchTab(tabId) {
+            currentTab = tabId;
+            
+            // ナビボタンのアクティブ状態更新
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-teal-50', 'text-teal-700', 'scale-105');
+                btn.classList.add('text-slate-500', 'hover:text-slate-700');
+            });
+            const activeBtn = document.getElementById('nav-' + tabId);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-500', 'hover:text-slate-700');
+                activeBtn.classList.add('bg-teal-50', 'text-teal-700', 'scale-105');
+            }
+
+            renderCurrentTab();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function renderCurrentTab() {
+            const container = document.getElementById('main-content');
+            container.innerHTML = '';
+            
+            if (currentTab === 'timeline') renderTimelineTab(container);
+            else if (currentTab === 'wishlist') renderWishlistTab(container);
+            else if (currentTab === 'settlement') renderSettlementTab(container);
+            else if (currentTab === 'members') renderMembersTab(container);
+        }
+
+        // ==========================================
+        // 4. タブ1: タイムライン（しおり・スケジュール）
+        // ==========================================
+        function renderTimelineTab(container) {
+            const daysCount = Math.max(1, Number(appData.trip.daysCount) || 2);
+            if (selectedDay > daysCount) selectedDay = 1;
+
+            // 日程セレクター
+            let dayTabsHTML = `<div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">`;
+            for (let d = 1; d <= daysCount; d++) {
+                const isSelected = d === selectedDay;
+                dayTabsHTML += `
+                    <button onclick="selectDay(${d})" class="px-5 py-2.5 rounded-2xl font-bold text-sm whitespace-nowrap transition-all ${
+                        isSelected 
+                        ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20' 
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                    }">
+                        ${d}日目
+                    </button>
+                `;
+            }
+            dayTabsHTML += `</div>`;
+
+            // 選択日のスケジュールフィルタ＆時間ソート
+            const daySchedules = appData.schedules
+                .filter(s => Number(s.day) === selectedDay)
+                .sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
+
+            // タイムラインカード一覧
+            let listHTML = '';
+            if (daySchedules.length === 0) {
+                listHTML = `
+                    <div class="bg-white rounded-3xl p-7 text-center border-2 border-dashed border-teal-200 animate-fade-in">
+                        <div class="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center text-2xl mx-auto mb-3">🗓️</div>
+                        <p class="text-slate-800 font-bold text-base mb-1">${selectedDay}日目の予定はまだ空欄です</p>
+                        <p class="text-xs text-slate-500 leading-relaxed mb-3">下の「＋ ${selectedDay}日目に予定を追加」フォームから、集合時間や食事・自由行動タイムを登録しましょう！</p>
+                        ${appData.families.length === 0 ? `
+                            <button onclick="switchTab('members')" class="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 border border-orange-200 px-3.5 py-2 rounded-xl transition">
+                                👨‍👩‍👧‍👦 先に参加家族・旅行タイトルを設定する →
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            } else {
+                listHTML = `<div class="relative pl-4 border-l-2 border-teal-200 space-y-4 ml-2 animate-fade-in">`;
+                daySchedules.forEach(item => {
+                    const typeInfo = SCHEDULE_TYPES[item.type] || SCHEDULE_TYPES.all;
+                    const isFreeTime = item.type === 'free';
+                    const mapUrl = item.location ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location)}` : '';
+
+                    listHTML += `
+                        <div class="relative bg-white rounded-3xl p-4 shadow-xs border ${isFreeTime ? 'border-orange-300 bg-orange-50/30' : 'border-slate-100'} transition hover:shadow-md">
+                            <!-- タイムラインのドット -->
+                            <span class="absolute -left-[25px] top-5 w-4 h-4 rounded-full border-4 border-[#fafaf9] ${isFreeTime ? 'bg-orange-500' : 'bg-teal-500'}"></span>
+                            
+                            <div class="flex items-start justify-between gap-2 mb-2">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="font-mono font-bold text-base text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-xl">
+                                        ${escapeHTML(item.time || '--:--')}
+                                    </span>
+                                    <span class="text-xs font-bold px-2.5 py-1 rounded-full border ${typeInfo.bg} ${typeInfo.text} ${typeInfo.border}">
+                                        ${typeInfo.icon} ${typeInfo.label}
+                                    </span>
+                                </div>
+                                <button onclick="deleteSchedule('${item.id}')" class="text-slate-400 hover:text-rose-500 p-1 rounded-lg transition" title="削除">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+
+                            <h3 class="font-bold text-base text-slate-800 mb-1.5 leading-snug">${escapeHTML(item.title)}</h3>
+                            
+                            ${item.memo ? `<p class="text-xs sm:text-sm text-slate-600 bg-slate-50/80 p-2.5 rounded-2xl mb-2.5 leading-relaxed">${escapeHTML(item.memo)}</p>` : ''}
+                            
+                            ${item.location ? `
+                                <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 mt-2">
+                                    <span class="text-xs text-slate-500 truncate flex items-center gap-1">
+                                        📍 ${escapeHTML(item.location)}
+                                    </span>
+                                    <a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-1 text-xs font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-xl transition">
+                                        <span>地図を開く</span>
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                    </a>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                listHTML += `</div>`;
+            }
+
+            // 新規予定追加フォーム
+            const formHTML = `
+                <div class="bg-white rounded-3xl p-5 shadow-xs border border-slate-200/80 mt-6">
+                    <h3 class="font-bold text-base text-slate-800 mb-3 flex items-center gap-2">
+                        <span class="bg-teal-100 text-teal-700 p-1.5 rounded-xl text-sm">➕</span>
+                        ${selectedDay}日目に予定を追加
+                    </h3>
+                    <form onsubmit="addSchedule(event)" class="space-y-3">
+                        <div class="grid grid-cols-3 gap-2.5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">時間</label>
+                                <input type="time" id="sched-time" required value="12:00" class="w-full px-3 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-500 focus:outline-none text-sm font-mono">
+                            </div>
+                            <div class="col-span-2">
+                                <label class="block text-xs font-bold text-slate-500 mb-1">行動タイプ（重要！）</label>
+                                <select id="sched-type" class="w-full px-3 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-500 focus:outline-none text-sm font-bold">
+                                    <option value="all">🤝 全員一緒（集合・観光）</option>
+                                    <option value="free">🎈 自由・別行動タイム</option>
+                                    <option value="meal">🍽️ 食事・カフェ</option>
+                                    <option value="move">🚗 移動・休憩</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">予定タイトル *</label>
+                            <input type="text" id="sched-title" required placeholder="例：〇〇牧場で集合、自由行動タイムなど" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-500 focus:outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">場所・施設名（Googleマップ検索用）</label>
+                            <input type="text" id="sched-location" placeholder="例：那須どうぶつ王国" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-500 focus:outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">メモ（集合の目印や注意点）</label>
+                            <textarea id="sched-memo" rows="2" placeholder="例：入り口の時計台前に15時集合！" class="w-full px-3.5 py-2 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-500 focus:outline-none text-sm"></textarea>
+                        </div>
+                        <button type="submit" class="w-full py-3 rounded-2xl bg-teal-600 hover:bg-teal-700 active:scale-[0.99] text-white font-bold text-sm shadow-md shadow-teal-600/20 transition">
+                            スケジュールに追加する
+                        </button>
+                    </form>
+                </div>
+            `;
+
+            container.innerHTML = dayTabsHTML + listHTML + formHTML;
+        }
+
+        function selectDay(day) {
+            selectedDay = day;
+            renderCurrentTab();
+        }
+
+        function addSchedule(e) {
+            e.preventDefault();
+            const time = document.getElementById('sched-time').value;
+            const type = document.getElementById('sched-type').value;
+            const title = document.getElementById('sched-title').value.trim();
+            const location = document.getElementById('sched-location').value.trim();
+            const memo = document.getElementById('sched-memo').value.trim();
+
+            if (!title) return;
+
+            appData.schedules.push({
+                id: generateId('s'),
+                day: selectedDay,
+                time,
+                type,
+                title,
+                location,
+                memo
+            });
+
+            saveData();
+            renderCurrentTab();
+        }
+
+        function deleteSchedule(id) {
+            appData.schedules = appData.schedules.filter(s => s.id !== id);
+            saveData();
+            renderCurrentTab();
+        }
+
+        // ==========================================
+        // 5. タブ2: 希望・投票タブ（やりたいことリスト）
+        // ==========================================
+        function renderWishlistTab(container) {
+            // ソート＆ヘッダー
+            const sortedWishes = [...appData.wishes].sort((a, b) => {
+                if (wishSortBy === 'votes') {
+                    return b.votes - a.votes;
+                }
+                return 0; // 追加順（新しい順にする場合はreverse）
+            });
+            if (wishSortBy === 'newest') sortedWishes.reverse();
+
+            const headerHTML = `
+                <div class="flex items-center justify-between bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
+                    <div>
+                        <h2 class="font-bold text-sm text-slate-800">みんなのやりたいこと 💡</h2>
+                        <p class="text-[11px] text-slate-500">「行きたい！」を押して投票しよう</p>
+                    </div>
+                    <div class="flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
+                        <button onclick="setWishSort('votes')" class="px-2.5 py-1 rounded-lg transition ${wishSortBy === 'votes' ? 'bg-white text-teal-700 shadow-xs' : 'text-slate-500'}">
+                            🔥 人気順
+                        </button>
+                        <button onclick="setWishSort('newest')" class="px-2.5 py-1 rounded-lg transition ${wishSortBy === 'newest' ? 'bg-white text-teal-700 shadow-xs' : 'text-slate-500'}">
+                            🆕 新着順
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // アイデアカード一覧
+            let cardsHTML = '<div class="space-y-3 animate-fade-in">';
+            if (sortedWishes.length === 0) {
+                cardsHTML += `
+                    <div class="bg-white rounded-3xl p-7 text-center border-2 border-dashed border-orange-200">
+                        <div class="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center text-2xl mx-auto mb-3">💡</div>
+                        <p class="text-base font-bold text-slate-800 mb-1">やりたいことリストは空欄です</p>
+                        <p class="text-xs text-slate-500 leading-relaxed">下の「＋ やりたいことを提案する」フォームから、行きたい場所や食べたいものを追加しましょう！</p>
+                    </div>
+                `;
+            } else {
+                sortedWishes.forEach(wish => {
+                    const fam = getFamily(wish.familyId);
+                    const color = getColorObj(fam.color);
+                    
+                    cardsHTML += `
+                        <div class="bg-white rounded-3xl p-4 shadow-xs border ${wish.adopted ? 'border-teal-400 bg-teal-50/20' : 'border-slate-100'} transition">
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${color.bg} ${color.text} ${color.border}">
+                                        ${escapeHTML(fam.name)} 提案
+                                    </span>
+                                    <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                                        #${escapeHTML(wish.category || 'その他')}
+                                    </span>
+                                </div>
+                                <button onclick="deleteWish('${wish.id}')" class="text-slate-300 hover:text-rose-500 p-1 transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                            </div>
+
+                            <h3 class="font-bold text-base text-slate-800 mb-3 leading-snug">${escapeHTML(wish.title)}</h3>
+
+                            <div class="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100">
+                                <!-- 採用済みトグル -->
+                                <button onclick="toggleWishAdopted('${wish.id}')" class="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border transition ${
+                                    wish.adopted 
+                                    ? 'bg-teal-600 text-white border-teal-600 shadow-xs' 
+                                    : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                                }">
+                                    <span>${wish.adopted ? '✅ スケジュール採用済' : '⬜ 採用にする'}</span>
+                                </button>
+
+                                <!-- いいね投票ボタン -->
+                                <button onclick="voteWish('${wish.id}')" class="flex items-center gap-1.5 bg-orange-50 hover:bg-orange-100 active:scale-95 text-orange-600 border border-orange-200 px-3.5 py-1.5 rounded-2xl font-bold text-sm transition shadow-2xs">
+                                    <span>❤️ 行きたい！</span>
+                                    <span class="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full min-w-[24px] text-center">${wish.votes}</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            cardsHTML += '</div>';
+
+            // 家族セレクトボックスのオプション生成
+            const familyOptions = appData.families.length > 0
+                ? appData.families.map(f => `<option value="${f.id}">${escapeHTML(f.name)}</option>`).join('')
+                : '<option value="">未設定（家族未登録）</option>';
+
+            // 新規アイデア追加フォーム
+            const formHTML = `
+                <div class="bg-white rounded-3xl p-5 shadow-xs border border-slate-200/80 mt-6">
+                    <h3 class="font-bold text-base text-slate-800 mb-3 flex items-center gap-2">
+                        <span class="bg-orange-100 text-orange-600 p-1.5 rounded-xl text-sm">➕</span>
+                        やりたいことを提案する
+                    </h3>
+                    <form onsubmit="addWish(event)" class="space-y-3">
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">提案する家族</label>
+                                <select id="wish-family" class="w-full px-3 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-orange-500 focus:outline-none text-sm font-bold">
+                                    ${familyOptions || '<option value="">家族を登録してください</option>'}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">ジャンル</label>
+                                <select id="wish-category" class="w-full px-3 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-orange-500 focus:outline-none text-sm">
+                                    <option value="観光">🎡 観光・遊び</option>
+                                    <option value="グルメ">🍦 グルメ・食事</option>
+                                    <option value="体験">🔥 体験・アクティビティ</option>
+                                    <option value="買い物">🛍️ お土産・買い物</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">やりたいこと・行きたい場所 *</label>
+                            <input type="text" id="wish-title" required placeholder="例：牧場で搾りたて牛乳を飲みたい！" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-orange-500 focus:outline-none text-sm">
+                        </div>
+                        <button type="submit" class="w-full py-3 rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-[0.99] text-white font-bold text-sm shadow-md shadow-orange-500/20 transition">
+                            リストに投稿する
+                        </button>
+                    </form>
+                </div>
+            `;
+
+            container.innerHTML = headerHTML + cardsHTML + formHTML;
+        }
+
+        function setWishSort(sortType) {
+            wishSortBy = sortType;
+            renderCurrentTab();
+        }
+
+        function addWish(e) {
+            e.preventDefault();
+            const familyId = document.getElementById('wish-family').value;
+            const category = document.getElementById('wish-category').value;
+            const title = document.getElementById('wish-title').value.trim();
+
+            if (!title) return;
+
+            appData.wishes.push({
+                id: generateId('w'),
+                title,
+                familyId: familyId || (appData.families[0] ? appData.families[0].id : ''),
+                category,
+                votes: 1,
+                adopted: false
+            });
+
+            saveData();
+            renderCurrentTab();
+        }
+
+        function voteWish(id) {
+            const wish = appData.wishes.find(w => w.id === id);
+            if (wish) {
+                wish.votes += 1;
+                saveData(false);
+                renderCurrentTab();
+                showToast('「行きたい！」に投票しました ❤️', '🎉');
+            }
+        }
+
+        function toggleWishAdopted(id) {
+            const wish = appData.wishes.find(w => w.id === id);
+            if (wish) {
+                wish.adopted = !wish.adopted;
+                saveData();
+                renderCurrentTab();
+            }
+        }
+
+        function deleteWish(id) {
+            appData.wishes = appData.wishes.filter(w => w.id !== id);
+            saveData();
+            renderCurrentTab();
+        }
+
+        // ==========================================
+        // 6. タブ3: 精算・持ち物タブ（割り勘＆分担）
+        // ==========================================
+        function calculateSettlements() {
+            // 各家族の収支バランスを計算（プラスは受け取る権利、マイナスは支払う義務）
+            const balances = {};
+            appData.families.forEach(f => { balances[f.id] = 0; });
+
+            let totalExpense = 0;
+
+            appData.expenses.forEach(exp => {
+                const amount = Number(exp.amount) || 0;
+                if (amount <= 0) return;
+                
+                // 対象家族（未指定の場合は全家族）
+                const targets = (exp.targetFamilies && exp.targetFamilies.length > 0)
+                    ? exp.targetFamilies.filter(id => balances.hasOwnProperty(id))
+                    : appData.families.map(f => f.id);
+
+                if (targets.length === 0) return;
+
+                totalExpense += amount;
+
+                // 支払った家族にプラス
+                if (balances.hasOwnProperty(exp.paidBy)) {
+                    balances[exp.paidBy] += amount;
+                }
+
+                // 対象家族で均等割りしてマイナス
+                const share = amount / targets.length;
+                targets.forEach(tId => {
+                    balances[tId] -= share;
+                });
+            });
+
+            // 債権者（受け取る人）と債務者（支払う人）に分類
+            const debtors = [];
+            const creditors = [];
+
+            Object.keys(balances).forEach(fId => {
+                const bal = balances[fId];
+                if (bal < -1) {
+                    debtors.push({ id: fId, amount: -bal });
+                } else if (bal > 1) {
+                    creditors.push({ id: fId, amount: bal });
+                }
+            });
+
+            // 金額の大きい順にソートして最小回数の精算ルートをマッチング（貪欲法）
+            debtors.sort((a, b) => b.amount - a.amount);
+            creditors.sort((a, b) => b.amount - a.amount);
+
+            const transactions = [];
+            let dIdx = 0;
+            let cIdx = 0;
+
+            while (dIdx < debtors.length && cIdx < creditors.length) {
+                const debtor = debtors[dIdx];
+                const creditor = creditors[cIdx];
+                
+                const settleAmount = Math.min(debtor.amount, creditor.amount);
+                
+                if (Math.round(settleAmount) > 0) {
+                    transactions.push({
+                        from: debtor.id,
+                        to: creditor.id,
+                        amount: Math.round(settleAmount)
+                    });
+                }
+
+                debtor.amount -= settleAmount;
+                creditor.amount -= settleAmount;
+
+                if (debtor.amount < 1) dIdx++;
+                if (creditor.amount < 1) cIdx++;
+            }
+
+            return { totalExpense, balances, transactions };
+        }
+
+        function renderSettlementTab(container) {
+            const { totalExpense, transactions } = calculateSettlements();
+
+            // 1. 精算ルート結果カード（ハイライト）
+            let settlementHTML = `
+                <section class="bg-gradient-to-br from-teal-700 to-emerald-800 text-white rounded-3xl p-5 shadow-md animate-fade-in">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="font-bold text-base flex items-center gap-2">
+                            <span>💸</span> かんたん家族割り勘精算
+                        </h2>
+                        <span class="text-xs bg-white/20 px-2.5 py-1 rounded-full font-bold">
+                            総額: ${formatCurrency(totalExpense)}
+                        </span>
+                    </div>
+            `;
+
+            if (appData.families.length < 2) {
+                settlementHTML += `
+                    <div class="bg-white/15 backdrop-blur-xs rounded-2xl p-4 text-center space-y-2.5">
+                        <p class="text-xs text-teal-50 leading-relaxed">2家族以上登録すると割り勘精算が自動計算されます。<br>まずは「家族・設定」タブから参加家族を追加しましょう！</p>
+                        <button onclick="switchTab('members')" class="inline-flex items-center gap-1 bg-white text-teal-800 font-bold text-xs px-4 py-2 rounded-xl shadow-xs hover:bg-teal-50 transition">
+                            ＋ 参加家族を登録する
+                        </button>
+                    </div>
+                `;
+            } else if (transactions.length === 0) {
+                settlementHTML += `
+                    <div class="bg-white/15 backdrop-blur-xs rounded-2xl p-4 text-center">
+                        <p class="font-bold text-sm">✨ 精算はすべて完了（または均等）です！</p>
+                        <p class="text-xs text-teal-100 mt-1">家族間のやり取りは必要ありません</p>
+                    </div>
+                `;
+            } else {
+                settlementHTML += `<p class="text-xs text-teal-100 mb-3">最小回数（${transactions.length}回）で完了する精算ルート：</p><div class="space-y-2.5">`;
+                transactions.forEach(t => {
+                    const fromFam = getFamily(t.from);
+                    const toFam = getFamily(t.to);
+                    const fromColor = getColorObj(fromFam.color);
+                    const toColor = getColorObj(toFam.color);
+
+                    settlementHTML += `
+                        <div class="bg-white text-slate-800 rounded-2xl p-3.5 shadow-xs flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-1.5 flex-wrap text-xs sm:text-sm font-bold">
+                                <span class="px-2.5 py-1 rounded-xl border ${fromColor.bg} ${fromColor.text} ${fromColor.border}">${escapeHTML(fromFam.name)}</span>
+                                <span class="text-slate-400">→</span>
+                                <span class="px-2.5 py-1 rounded-xl border ${toColor.bg} ${toColor.text} ${toColor.border}">${escapeHTML(toFam.name)}</span>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <span class="block text-[10px] text-slate-400 font-bold">支払う金額</span>
+                                <span class="font-mono font-bold text-base sm:text-lg text-orange-600">${formatCurrency(t.amount)}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                settlementHTML += `</div>`;
+            }
+            settlementHTML += `</section>`;
+
+            // 2. 立替履歴＆新規支出入力
+            const familyOptions = appData.families.length > 0
+                ? appData.families.map(f => `<option value="${f.id}">${escapeHTML(f.name)}</option>`).join('')
+                : '<option value="">先に家族を登録してください</option>';
+            const targetCheckboxes = appData.families.length > 0
+                ? appData.families.map(f => `
+                    <label class="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer select-none">
+                        <input type="checkbox" name="exp-targets" value="${f.id}" checked class="accent-teal-600 rounded">
+                        <span>${escapeHTML(f.name)}</span>
+                    </label>
+                `).join('')
+                : '<span class="text-xs text-slate-400">家族が未登録です（「家族・設定」から追加できます）</span>';
+
+            let expenseHistoryHTML = `
+                <section class="bg-white rounded-3xl p-5 shadow-xs border border-slate-200/80">
+                    <h3 class="font-bold text-base text-slate-800 mb-3 flex items-center gap-2">
+                        <span class="bg-orange-100 text-orange-600 p-1.5 rounded-xl text-sm">🧾</span>
+                        立替支出の記録・追加
+                    </h3>
+                    
+                    <form onsubmit="addExpense(event)" class="space-y-3 pb-4 border-b border-slate-100">
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">立て替えた家族</label>
+                                <select id="exp-paidby" class="w-full px-3 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-500 focus:outline-none text-sm font-bold">
+                                    ${familyOptions}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">金額（円） *</label>
+                                <input type="number" id="exp-amount" required min="1" placeholder="例：15000" class="w-full px-3 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-500 focus:outline-none text-sm font-mono font-bold">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">内容（何代？） *</label>
+                            <input type="text" id="exp-title" required placeholder="例：BBQ食材代、高速代、入場チケット" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-500 focus:outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1.5">割り勘の対象家族</label>
+                            <div class="flex flex-wrap gap-1.5">
+                                ${targetCheckboxes}
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full py-2.5 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-sm transition">
+                            ＋ 支出を追加する
+                        </button>
+                    </form>
+
+                    <!-- 支出履歴リスト -->
+                    <div class="mt-4 space-y-2.5">
+                        <h4 class="text-xs font-bold text-slate-400">登録済みの立替履歴（${appData.expenses.length}件）</h4>
+            `;
+
+            if (appData.expenses.length === 0) {
+                expenseHistoryHTML += `
+                    <div class="bg-slate-50 rounded-2xl p-4 text-center border border-dashed border-slate-200">
+                        <p class="text-xs font-bold text-slate-600">立替支出はまだ0件です</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">上の「＋ 支出を追加する」ボタンから記録しましょう</p>
+                    </div>
+                `;
+            } else {
+                [...appData.expenses].reverse().forEach(exp => {
+                    const payer = getFamily(exp.paidBy);
+                    const color = getColorObj(payer.color);
+                    const targetNames = (exp.targetFamilies || []).map(id => getFamily(id).name).join('・');
+
+                    expenseHistoryHTML += `
+                        <div class="flex items-center justify-between gap-2 p-3 rounded-2xl bg-slate-50/80 border border-slate-100">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-1.5 mb-1">
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${color.bg} ${color.text} ${color.border}">
+                                        ${escapeHTML(payer.name)} 立替
+                                    </span>
+                                    <span class="text-[10px] text-slate-400 truncate">対象: ${escapeHTML(targetNames || '全員')}</span>
+                                </div>
+                                <p class="text-sm font-bold text-slate-800 truncate">${escapeHTML(exp.title)}</p>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <span class="font-mono font-bold text-sm text-slate-800">${formatCurrency(exp.amount)}</span>
+                                <button onclick="deleteExpense('${exp.id}')" class="text-slate-300 hover:text-rose-500 p-1 transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            expenseHistoryHTML += `</div></section>`;
+
+            // 3. 共有持ち物分担リスト
+            const checkedCount = appData.items.filter(i => i.checked).length;
+            let itemsHTML = `
+                <section class="bg-white rounded-3xl p-5 shadow-xs border border-slate-200/80">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-base text-slate-800 flex items-center gap-2">
+                            <span class="bg-teal-100 text-teal-700 p-1.5 rounded-xl text-sm">🎒</span>
+                            共有持ち物・役割分担
+                        </h3>
+                        <span class="text-xs font-bold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-full">
+                            準備完了 ${checkedCount} / ${appData.items.length}
+                        </span>
+                    </div>
+
+                    <form onsubmit="addItem(event)" class="flex gap-2 mb-4">
+                        <select id="item-family" class="px-2.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 text-xs font-bold focus:outline-none focus:border-teal-500 shrink-0">
+                            ${familyOptions}
+                        </select>
+                        <input type="text" id="item-name" required placeholder="持ち物（例：トランプ）" class="w-full min-w-0 px-3 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-500 focus:outline-none text-sm">
+                        <button type="submit" class="px-4 py-2.5 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm shrink-0 shadow-xs transition">
+                            追加
+                        </button>
+                    </form>
+
+                    <div class="space-y-2">
+            `;
+
+            if (appData.items.length === 0) {
+                itemsHTML += `
+                    <div class="bg-slate-50 rounded-2xl p-5 text-center border border-dashed border-slate-200">
+                        <p class="text-xs font-bold text-slate-600">共有持ち物リストは空欄です</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">上の入力欄と「＋ 追加」ボタンから担当分担を登録しましょう！</p>
+                    </div>
+                `;
+            } else {
+                appData.items.forEach(item => {
+                    const fam = getFamily(item.familyId);
+                    const color = getColorObj(fam.color);
+                    itemsHTML += `
+                        <div class="flex items-center justify-between gap-2 p-3 rounded-2xl border transition ${item.checked ? 'bg-slate-50 border-slate-100 opacity-75' : 'bg-white border-slate-200'}">
+                            <label class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer select-none">
+                                <input type="checkbox" onchange="toggleItem('${item.id}')" ${item.checked ? 'checked' : ''} class="w-5 h-5 accent-teal-600 rounded-lg cursor-pointer shrink-0">
+                                <span class="text-sm font-medium truncate ${item.checked ? 'line-through text-slate-400' : 'text-slate-800'}">
+                                    ${escapeHTML(item.name)}
+                                </span>
+                            </label>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${color.bg} ${color.text} ${color.border}">
+                                    ${escapeHTML(fam.name)}
+                                </span>
+                                <button onclick="deleteItem('${item.id}')" class="text-slate-300 hover:text-rose-500 p-1 transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            itemsHTML += `</div></section>`;
+
+            container.innerHTML = settlementHTML + expenseHistoryHTML + itemsHTML;
+        }
+
+        function addExpense(e) {
+            e.preventDefault();
+            if (appData.families.length === 0) {
+                showToast('先に「家族・設定」から家族を登録してください', '⚠️');
+                return;
+            }
+            const paidBy = document.getElementById('exp-paidby').value;
+            const amount = Number(document.getElementById('exp-amount').value);
+            const title = document.getElementById('exp-title').value.trim();
+            
+            const targetNodes = document.querySelectorAll('input[name="exp-targets"]:checked');
+            const targetFamilies = Array.from(targetNodes).map(cb => cb.value);
+
+            if (!title || amount <= 0) return;
+            if (targetFamilies.length === 0) {
+                showToast('割り勘の対象家族を1つ以上選んでください', '⚠️');
+                return;
+            }
+
+            appData.expenses.push({
+                id: generateId('e'),
+                title,
+                amount,
+                paidBy,
+                targetFamilies
+            });
+
+            saveData();
+            renderCurrentTab();
+        }
+
+        function deleteExpense(id) {
+            appData.expenses = appData.expenses.filter(e => e.id !== id);
+            saveData();
+            renderCurrentTab();
+        }
+
+        function addItem(e) {
+            e.preventDefault();
+            const familyId = document.getElementById('item-family').value;
+            const name = document.getElementById('item-name').value.trim();
+            if (!name) return;
+
+            appData.items.push({
+                id: generateId('i'),
+                name,
+                familyId: familyId || (appData.families[0] ? appData.families[0].id : ''),
+                checked: false
+            });
+
+            saveData();
+            renderCurrentTab();
+        }
+
+        function toggleItem(id) {
+            const item = appData.items.find(i => i.id === id);
+            if (item) {
+                item.checked = !item.checked;
+                saveData(false);
+                renderCurrentTab();
+            }
+        }
+
+        function deleteItem(id) {
+            appData.items = appData.items.filter(i => i.id !== id);
+            saveData();
+            renderCurrentTab();
+        }
+
+        // ==========================================
+        // 7. タブ4: メンバー＆設定タブ（家族管理）
+        // ==========================================
+        function renderMembersTab(container) {
+            // 1. 旅行基本設定カード
+            const tripSettingsHTML = `
+                <section class="bg-white rounded-3xl p-5 shadow-xs border border-slate-200/80 animate-fade-in">
+                    <h2 class="font-bold text-base text-slate-800 mb-3 flex items-center gap-2">
+                        <span class="bg-teal-100 text-teal-700 p-1.5 rounded-xl text-sm">⚙️</span>
+                        旅行の基本設定
+                    </h2>
+                    <form onsubmit="saveTripSettings(event)" class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">旅行タイトル</label>
+                            <input type="text" id="set-title" required value="${escapeHTML(appData.trip.title)}" placeholder="例：夏のファミリーキャンプ旅 🏕️" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-500 focus:outline-none text-sm font-bold">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">出発日</label>
+                                <input type="date" id="set-start" value="${escapeHTML(appData.trip.startDate)}" class="w-full px-3 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-500 focus:outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">帰宅日</label>
+                                <input type="date" id="set-end" value="${escapeHTML(appData.trip.endDate)}" class="w-full px-3 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-500 focus:outline-none text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">日程数（タイムラインのタブ数）</label>
+                            <select id="set-days" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-teal-500 focus:outline-none text-sm font-bold">
+                                ${[1,2,3,4,5,6,7].map(n => `<option value="${n}" ${Number(appData.trip.daysCount) === n ? 'selected' : ''}>${n}日間（${n === 1 ? '日帰り' : (n-1)+'泊'+n+'日'}）</option>`).join('')}
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full py-2.5 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-sm transition">
+                            旅行設定を保存する
+                        </button>
+                    </form>
+                </section>
+            `;
+
+            // 2. 参加家族リスト
+            let familyListHTML = `
+                <section class="bg-white rounded-3xl p-5 shadow-xs border border-slate-200/80">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="font-bold text-base text-slate-800 flex items-center gap-2">
+                            <span class="bg-orange-100 text-orange-600 p-1.5 rounded-xl text-sm">👨‍👩‍👧‍👦</span>
+                            参加家族メンバー
+                        </h2>
+                        <span class="text-xs font-bold text-slate-500">${appData.families.length}家族参加</span>
+                    </div>
+                    <div class="space-y-2.5 mb-5">
+            `;
+
+            if (appData.families.length === 0) {
+                familyListHTML += `
+                    <div class="bg-orange-50/60 rounded-2xl p-5 text-center border-2 border-dashed border-orange-200">
+                        <div class="text-2xl mb-1.5">👨‍👩‍👧‍👦</div>
+                        <p class="text-sm font-bold text-slate-800">参加家族はまだ0件です</p>
+                        <p class="text-xs text-slate-500 mt-1">下の「＋ 参加家族に追加する」フォームから、旅行に行く家族を登録しましょう！</p>
+                    </div>
+                `;
+            }
+
+            appData.families.forEach(fam => {
+                const color = getColorObj(fam.color);
+                const total = (Number(fam.adults) || 0) + (Number(fam.children) || 0);
+                
+                familyListHTML += `
+                    <div class="flex items-center justify-between gap-2 p-3.5 rounded-2xl border ${color.border} ${color.bg} bg-opacity-40">
+                        <div class="flex items-center gap-3">
+                            <span class="w-4 h-4 rounded-full ${color.dot} shrink-0 shadow-2xs"></span>
+                            <div>
+                                <h3 class="font-bold text-base text-slate-800">${escapeHTML(fam.name)}</h3>
+                                <p class="text-xs text-slate-600 font-medium">
+                                    計${total}名（大人 ${fam.adults}名 / 子ども ${fam.children}名）
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="startEditFamily('${fam.id}')" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold transition">
+                                編集
+                            </button>
+                            ${appData.families.length > 1 ? `
+                                <button onclick="confirmDeleteFamily('${fam.id}')" class="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-white transition" title="削除">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            familyListHTML += `</div>`;
+
+            // 家族追加・編集フォーム
+            const editingFam = editingFamilyId ? appData.families.find(f => f.id === editingFamilyId) : null;
+            const formTitle = editingFam ? `「${escapeHTML(editingFam.name)}」を編集中` : '新しい家族を追加する';
+            const defaultName = editingFam ? editingFam.name : '';
+            const defaultAdults = editingFam ? editingFam.adults : 2;
+            const defaultChildren = editingFam ? editingFam.children : 1;
+            const defaultColor = editingFam ? editingFam.color : FAMILY_COLORS[appData.families.length % FAMILY_COLORS.length].id;
+
+            const colorRadios = FAMILY_COLORS.map(c => `
+                <label class="cursor-pointer">
+                    <input type="radio" name="fam-color" value="${c.id}" ${defaultColor === c.id ? 'checked' : ''} class="peer sr-only">
+                    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 peer-checked:border-slate-800 peer-checked:ring-2 peer-checked:ring-slate-800/20 ${c.bg} ${c.text} text-xs font-bold transition">
+                        <span class="w-2.5 h-2.5 rounded-full ${c.dot}"></span>
+                        <span>${c.name}</span>
+                    </div>
+                </label>
+            `).join('');
+
+            const familyFormHTML = `
+                <div class="pt-4 border-t border-slate-100">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-sm text-slate-700">${formTitle}</h3>
+                        ${editingFam ? `<button onclick="cancelEditFamily()" class="text-xs text-slate-400 hover:text-slate-600 underline">キャンセル</button>` : ''}
+                    </div>
+                    <form onsubmit="saveFamily(event)" class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">家族名（ニックネーム可） *</label>
+                            <input type="text" id="fam-name" required value="${escapeHTML(defaultName)}" placeholder="例：田中家" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-orange-500 focus:outline-none text-sm font-bold">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">大人の人数</label>
+                                <input type="number" id="fam-adults" min="0" max="20" required value="${defaultAdults}" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-orange-500 focus:outline-none text-sm font-mono font-bold">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">子どもの人数</label>
+                                <input type="number" id="fam-children" min="0" max="20" required value="${defaultChildren}" class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-orange-500 focus:outline-none text-sm font-mono font-bold">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1.5">イメージカラー</label>
+                            <div class="flex flex-wrap gap-2">
+                                ${colorRadios}
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full py-3 rounded-2xl ${editingFam ? 'bg-slate-800 hover:bg-slate-900' : 'bg-orange-500 hover:bg-orange-600'} text-white font-bold text-sm shadow-sm transition">
+                            ${editingFam ? '家族情報を更新する' : '＋ 参加家族に追加する'}
+                        </button>
+                    </form>
+                </div>
+            </section>
+            `;
+
+            container.innerHTML = tripSettingsHTML + familyListHTML + familyFormHTML;
+        }
+
+        function saveTripSettings(e) {
+            e.preventDefault();
+            appData.trip.title = document.getElementById('set-title').value.trim();
+            appData.trip.startDate = document.getElementById('set-start').value;
+            appData.trip.endDate = document.getElementById('set-end').value;
+            appData.trip.daysCount = Number(document.getElementById('set-days').value) || 2;
+            
+            saveData();
+            renderCurrentTab();
+        }
+
+        function startEditFamily(id) {
+            editingFamilyId = id;
+            renderCurrentTab();
+        }
+
+        function cancelEditFamily() {
+            editingFamilyId = null;
+            renderCurrentTab();
+        }
+
+        function saveFamily(e) {
+            e.preventDefault();
+            const name = document.getElementById('fam-name').value.trim();
+            const adults = Number(document.getElementById('fam-adults').value) || 0;
+            const children = Number(document.getElementById('fam-children').value) || 0;
+            const colorNode = document.querySelector('input[name="fam-color"]:checked');
+            const color = colorNode ? colorNode.value : 'teal';
+
+            if (!name) return;
+
+            if (editingFamilyId) {
+                const fam = appData.families.find(f => f.id === editingFamilyId);
+                if (fam) {
+                    fam.name = name;
+                    fam.adults = adults;
+                    fam.children = children;
+                    fam.color = color;
+                }
+                editingFamilyId = null;
+            } else {
+                appData.families.push({
+                    id: generateId('f'),
+                    name,
+                    adults,
+                    children,
+                    color
+                });
+            }
+
+            saveData();
+            renderCurrentTab();
+        }
+
+        function confirmDeleteFamily(id) {
+            const fam = getFamily(id);
+            openConfirmModal(
+                `「${fam.name}」を削除しますか？`,
+                'この家族を削除すると、割り勘計算の対象からも外れます。よろしいですか？',
+                '削除する',
+                () => {
+                    appData.families = appData.families.filter(f => f.id !== id);
+                    // 支出の対象リストからも除外
+                    appData.expenses.forEach(exp => {
+                        if (exp.targetFamilies) {
+                            exp.targetFamilies = exp.targetFamilies.filter(tid => tid !== id);
+                        }
+                    });
+                    if (editingFamilyId === id) editingFamilyId = null;
+                    saveData();
+                    renderCurrentTab();
+                }
+            );
+        }
+
+        // ==========================================
+        // 8. 初期化起動
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            updateHeader();
+            switchTab('timeline');
+        });
+    </script>
+</body>
+</html>
